@@ -10,6 +10,7 @@
 /**************************************************************************/
 
 #include "drivers/jtag/jtag.h"
+#include "core/gpio/gpio.h"
 
 #include "mux.h"
 
@@ -24,6 +25,37 @@ static uint32_t elen;
 uint8_t fpgamax;
 uint8_t fpgaidx[5] = {0,0,0,0,0xff};
 uint8_t bcs[5];
+
+const uint8_t tscspin[] = {0x14,0x14,0x2b,0x2b};
+const uint8_t tssclpin[] = {0x30,0x12,0x11,0x10};
+const uint8_t tssdopin[] = {0x31,0x23,0x0b,0x1a};
+
+uint8_t temps_initialized = 0;
+
+void temps_init()
+{
+	int i;
+	SCB_SYSAHBCLKCTRL |= SCB_SYSAHBCLKCTRL_IOCON | SCB_SYSAHBCLKCTRL_GPIO;
+	IOCON_JTAG_TDI_PIO0_11 = 0xc1;
+	IOCON_JTAG_TMS_PIO1_0 = 0xc1;
+	IOCON_JTAG_TDO_PIO1_1 = 0xc1;
+	IOCON_JTAG_nTRST_PIO1_2 = 0xc1;
+	IOCON_PIO1_4 = 0xc0;
+	IOCON_PIO1_10 = 0xc0;
+	IOCON_PIO2_3 = 0xc0;
+	IOCON_PIO2_11 = 0xc0;
+	IOCON_PIO3_0 = 0xc0;
+	IOCON_PIO3_1 = 0xc0;
+	for (i=0; i<4; ++i)
+	{
+		gpioSetValue(tscspin[i] >> 4, tscspin[i] & 0xf, 1);
+		gpioSetValue(tssclpin[i] >> 4, tssclpin[i] & 0xf, 0);
+		gpioSetDir(tscspin[i] >> 4, tscspin[i] & 0xf, gpioDirection_Output);
+		gpioSetDir(tssclpin[i] >> 4, tssclpin[i] & 0xf, gpioDirection_Output);
+		gpioSetDir(tssdopin[i] >> 4, tssdopin[i] & 0xf, gpioDirection_Input);
+	}
+	temps_initialized = 1;
+}
 
 uint8_t fpgaMap()
 {
@@ -279,23 +311,25 @@ bool lmmRx(uint8_t c)
 		return true;
 	}
 	case 0xa:  // Read Temperature
+	case 0xd:  // Read Temperature High Resolution
 	{
-		uint8_t i, temp, tt;
 		if (msglen < 2)
 			break;
-		if (msg[1])
+		uint8_t i = msg[1], j, bits = msg[0]==0xd?16:9;
+		uint16_t temp = 0;
+		if (i < 4)
 		{
-			pf_write("\0", 1);
-			return true;
+			if (!temps_initialized) temps_init();
+			gpioSetValue(tscspin[i] >> 4, tscspin[i] & 0xf, 0);
+			for (j=0; j<bits; ++j)
+			{
+				gpioSetValue(tssclpin[i] >> 4, tssclpin[i] & 0xf, 1);
+				temp = (temp << 1) | gpioGetValue(tssdopin[i] >> 4, tssdopin[i] & 0xf);
+				gpioSetValue(tssclpin[i] >> 4, tssclpin[i] & 0xf, 0);
+			}
+			gpioSetValue(tscspin[i] >> 4, tscspin[i] & 0xf, 1);
 		}
-		temp = 0;
-		for (i=0; i<fpgamax; ++i)
-		{
-			tt = 0;  // FIXME TODO
-			if (tt > temp)
-				temp = tt;
-		}
-		pf_write(&temp, 1);
+		pf_write(&temp, msg[0]==0xd?2:1);
 		return true;
 	}
 	case 0xb:  // Set Register
