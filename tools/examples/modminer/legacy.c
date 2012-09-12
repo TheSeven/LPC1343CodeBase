@@ -271,7 +271,7 @@ bool lmmRx(uint8_t c)
 		uint8_t rv;
 		if (msglen < 6)
 			break;
-		bcs[jtag] = msg[2]>200;
+		bcs[jtag] = msg[2]>250;
 		if (bcs[jtag]) msg[2] = 50;
 		fpgaSetRegister(jtag, 0xD, msg[2]);
 		rv = !bcs[jtag];
