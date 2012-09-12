@@ -298,6 +298,25 @@ bool lmmRx(uint8_t c)
 		pf_write(&temp, 1);
 		return true;
 	}
+	case 0xb:  // Set Register
+	{
+		if (msglen < 7)
+			break;
+		bitendianflip(&msg[3], 32);
+		fpgaSetRegisterFromBytes(jtag, msg[2], &msg[3]);
+		pf_write("\1", 1);
+		return true;
+	}
+	case 0xc:  // Read Register
+	{
+		uint8_t buf[4];
+		if (msglen < 3)
+			break;
+		fpgaGetRegisterAsBytes(jtag, msg[2], buf);
+		bitendianflip(buf, 32);
+		pf_write(buf, 4);
+		return true;
+	}
 	}
 	return false;
 }
