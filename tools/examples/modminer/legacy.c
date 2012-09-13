@@ -315,19 +315,19 @@ bool lmmRx(uint8_t c)
 	{
 		if (msglen < 2)
 			break;
-		uint8_t i = msg[1], j, bits = msg[0]==0xd?16:9;
+		uint8_t i, bits = msg[0]==0xd?16:9;
 		uint16_t temp = 0;
-		if (i < 4)
+		if (jtag < 4)
 		{
 			if (!temps_initialized) temps_init();
-			gpioSetValue(tscspin[i] >> 4, tscspin[i] & 0xf, 0);
-			for (j=0; j<bits; ++j)
+			gpioSetValue(tscspin[jtag] >> 4, tscspin[jtag] & 0xf, 0);
+			for (i=0; i<bits; ++i)
 			{
-				gpioSetValue(tssclpin[i] >> 4, tssclpin[i] & 0xf, 1);
-				temp = (temp << 1) | gpioGetValue(tssdopin[i] >> 4, tssdopin[i] & 0xf);
-				gpioSetValue(tssclpin[i] >> 4, tssclpin[i] & 0xf, 0);
+				gpioSetValue(tssclpin[jtag] >> 4, tssclpin[jtag] & 0xf, 1);
+				temp = (temp << 1) | gpioGetValue(tssdopin[jtag] >> 4, tssdopin[jtag] & 0xf);
+				gpioSetValue(tssclpin[jtag] >> 4, tssclpin[jtag] & 0xf, 0);
 			}
-			gpioSetValue(tscspin[i] >> 4, tscspin[i] & 0xf, 1);
+			gpioSetValue(tscspin[jtag] >> 4, tscspin[jtag] & 0xf, 1);
 		}
 		pf_write(&temp, msg[0]==0xd?2:1);
 		return true;
