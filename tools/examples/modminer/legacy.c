@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*! 
+/*!
     @file     legacy.c
     @author   Luke-Jr
     @date     4 July, 2012
@@ -351,6 +351,20 @@ bool lmmRx(uint8_t c)
 		pf_write(buf, 4);
 		return true;
 	}
-	}
+    case 0xe:  // Shift USER1 register
+    {
+        if (msglen < 3 || msglen < 3 + (msg[2] + 7) / 8)
+            break;
+        int bytes = (msg[2] + 7) / 8;
+        bitendianflip(&msg[3], msg[2]);
+        jtagWrite(jtag, JTAG_REG_IR, (const uint8_t*)"\x40", 6);
+        jtagRead(jtag, JTAG_REG_DR, &msg[3], msg[2]);
+        jtagRun(jtag);
+        bitendianflip(&msg[3], msg[2]);
+        msg[2] = 1;
+        pf_write(&msg[2], bytes + 1);
+        return true;
+    }
+    }
 	return false;
 }

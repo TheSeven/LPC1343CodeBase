@@ -39,7 +39,7 @@ tryNewMux:
 		if (c == 0xfe)
 			muxMode = MUX_MHBP;
 		else
-		if (c < 0xe)
+		if (c < 0x10)
 			muxMode = MUX_COMPAT;
 #ifdef CFG_INTERFACE
 		else
